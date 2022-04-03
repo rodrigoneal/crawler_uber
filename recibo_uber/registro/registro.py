@@ -22,9 +22,10 @@ class Registro:
         temp = '\n'.join(dados_validos).replace(
             'Minus\n', '').replace('Surge', '').split('\n')
         return temp
-    
+
     def cancelada(self, dados):
-        dirs_cancelado = ['data_viagem', 'valor_corrida', 'local_cobranca','pagamento','motorista', 'endereco_partida']
+        dirs_cancelado = ['data_viagem', 'valor_corrida',
+                          'local_cobranca', 'pagamento', 'motorista', 'endereco_partida']
         if len(dados) == 5:
             self.pagamento = None
             dirs_cancelado.remove('pagamento')
@@ -33,7 +34,7 @@ class Registro:
                 self.motorista = ' '.join(dado.split(' ')[5:])
                 try:
                     self.tipo_corrida = dado.split(' ')[3]
-                except: 
+                except:
                     breakpoint
                 continue
             setattr(self, dir, dado)
@@ -44,8 +45,8 @@ class Registro:
                          'pagamento', 'motorista', 'endereco_partida',
                          'horario_partida', 'endereco_chegada', 'horario_chegada']
         if len(dados) == 8:
-                self.pagamento = None
-                dirs_completo.remove('pagamento')
+            self.pagamento = None
+            dirs_completo.remove('pagamento')
         for dir, dado in zip(dirs_completo, dados):
             if dir == 'motorista':
                 self.motorista = ' '.join(dado.split(' ')[5:])
@@ -53,31 +54,26 @@ class Registro:
                 continue
             setattr(self, dir, dado)
 
-
-
     def save_registro(self, dados, link):
-        
+
         temp = self.clear_list(dados)
         if "Cancelada" in temp[1]:
             temp[1] = temp[1].replace('Cancelada', '')
-            self.cancelada(temp) 
+            self.cancelada(temp)
         else:
-            self.completa(temp)            
+            self.completa(temp)
         try:
             self.pagamento = self.pagamento.replace('•••• ', '')
         except:
             pass
         try:
-            self.data_viagem = datetime.strptime(self.data_viagem, '%d %B %Y, %I:%M%p')
+            self.data_viagem = datetime.strptime(
+                self.data_viagem, '%d %B %Y, %I:%M%p')
         except TypeError:
             breakpoint()
         self.link = link
-        return self 
+        return self
 
-    def gerar_link():
-        cont = 10
-        while True:
-            link = 'https://riders.uber.com/trips?offset={}&fromTime&toTime'
-            _temp = link.format(cont)
-            yield _temp
-            cont += 10
+    @classmethod
+    def from_dict(cls, dado):
+        return cls(**dado)
