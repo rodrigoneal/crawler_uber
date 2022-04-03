@@ -4,11 +4,8 @@ from selenium_tools.selenium_driver import SeleniumDriver
 from recibo_uber.pages.page import DadosViagem, Login
 from recibo_uber.registro.to_csv import to_csv
 
-from dotenv import dotenv_values
-
 config = dotenv_values(".env")
 
-breakpoint()
 
 driver = SeleniumDriver()
 login = Login(driver, url='https://www.uber.com/br/pt-br/')

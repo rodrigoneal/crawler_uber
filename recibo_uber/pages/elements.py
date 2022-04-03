@@ -19,6 +19,7 @@ def gerar_link():
         yield _temp
         cont += 10
 
+
 class AbrirLogin(Element):
     abrir_submenu = (
         By.XPATH, "/html/body/div[1]/div/div/div[1]/main/nav/div/ul[4]/li[4]/button")
@@ -74,11 +75,11 @@ class PegarDados(Element):
     pagamento = (
         By.XPATH, '//table[6]/tbody/tr/td/table[2]/tbody/tr/td[1]/table/tbody/tr/td/table[2]/tbody/tr[1]/td')
     frame_baner = (By.ID, 'unified-receipt-iframe')
-    alt_pagamento = (By.XPATH, '//td/table[5]/tbody/tr/td/table[3]/tbody/tr/td[1]/table/tbody/tr/td/table[2]/tbody/tr/td')
-    alt_pagamento_2 = (By.XPATH, '//td/table[4]/tbody/tr/td/table[3]/tbody/tr/td[1]/table/tbody/tr/td/table[2]/tbody/tr/td')
+    alt_pagamento = (
+        By.XPATH, '//td/table[5]/tbody/tr/td/table[3]/tbody/tr/td[1]/table/tbody/tr/td/table[2]/tbody/tr/td')
+    alt_pagamento_2 = (
+        By.XPATH, '//td/table[4]/tbody/tr/td/table[3]/tbody/tr/td[1]/table/tbody/tr/td/table[2]/tbody/tr/td')
     gerador_url = gerar_link()
-
-       
 
     def get_cards(self):
         tentativa = 0
@@ -112,6 +113,7 @@ class PegarDados(Element):
                 if tentativa > 10:
                     raise TypeError
                 pass
+
     def pegar_dados(self):
         self.current_url = self.driver.current_url
         while True:
@@ -140,9 +142,9 @@ class PegarDados(Element):
                 _link_url = next(self.gerador_url)
                 self.driver.get(_link_url)
 
-
     def limpar_pagamento(self, pagamento: str):
-        sujeiras = ('Mastercard ••••', 'Visa ••••', 'Mastercard Crédito ••••', 'Mastercard Débito ••••')
+        sujeiras = ('Mastercard ••••', 'Visa ••••',
+                    'Mastercard Crédito ••••', 'Mastercard Débito ••••')
         if pagamento:
             for sujeira in sujeiras:
                 pagamento = pagamento.replace(sujeira, '')
@@ -157,52 +159,55 @@ class PegarDados(Element):
                 pass
         raise TypeError()
 
+    def _recibo(self):
+        contador = 0
+        while True:
+            try:
+                recibo = self.find_element(self.recibo, time=1)
+                if recibo.text.strip().lower() == 'Ver recibo'.lower():
+                    print(recibo.text)
+                    recibo.click()
+                    try:
+                        return self._change_frame()
+                    except:
+                        if contador > 40:
+                            raise ValueError()
+                        contador += 1
+                        pass
+                else:
+                    breakpoint()
+                    raise ValueError()
+            except:
+                pass
+
+    def _change_frame(self):
+        self.driver.switch_to.default_content()
+        try:
+            frame = self.find_element(self.frame_baner, time=2)
+            return frame
+        except:
+            raise TypeError()
 
     def pegar_pagamento(self):
-        for dado in self.dados:           
+        for dado in self.dados:
             if not dado.pagamento:
                 self.driver.get(dado.link)
                 try:
-                    recibo = self.find_element(self.recibo)
-                    if recibo.text.strip().lower() == 'Ver recibo'.lower():
-                        recibo.click()
-                    else:
-                        print(recibo.text)
-                        continue
-                except:
-                    sleep(0.5)
-                    try:
-                        recibo = self.find_element(self.recibo)
-                    except:
-                        continue
-                    if recibo.text.strip().lower() == 'Ver recibo'.lower():
-                        recibo.click()
-                    else:
-                        print(recibo.text)
-                        continue
-                for _ in range(20):
-                    self.driver.switch_to.default_content()
-                    try:
-                        frame = self.find_element(self.frame_baner, time=2)
-                        break
-                    except:
-                        try:
-                            self.find_element(self.recibo, time=1).click()
-                        except:
-                            pass
-                        pass              
-                sleep(0.5)                
+                    frame = self._recibo()
+                except ValueError:
+                    continue
                 self.change_frame(frame)
-                for _ in range(10):
+                try:
+                    pagamento = self._pagamento()
+                except:
                     try:
-                        pagamento = self._pagamento()
-                    except:
-                        self.driver.switch_to.default_content()
-                        frame = self.find_element(self.frame_baner, time=2)
+                        self._change_frame()
                         self.change_frame(frame)
-                if not pagamento:
-                    pagamento = None
-                else: 
-                    pagamento = self.limpar_pagamento(pagamento)           
-                dado.pagamento = pagamento
+                        sleep(0.5)
+                        self._pagamento()
+                    except:
+                        continue
+                if pagamento:
+                    pagamento = self.limpar_pagamento(pagamento)
+                    dado.pagamento = pagamento
         return self.dados
