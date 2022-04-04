@@ -1,3 +1,4 @@
+from typing import Generator
 from time import sleep
 
 from selenium.common.exceptions import (ElementClickInterceptedException,
@@ -5,19 +6,25 @@ from selenium.common.exceptions import (ElementClickInterceptedException,
                                         StaleElementReferenceException,
                                         TimeoutException)
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.remote.webelement import WebElement
 from selenium_tools.page_objects import Element
 
 from recibo_uber.registro.registro import Registro
 
 
-def gerar_link():
-    cont = 10
+selenium_exception = (ElementClickInterceptedException,
+                      NoSuchElementException,
+                      StaleElementReferenceException,
+                      TimeoutException)
+
+
+def gerar_link(count: int) -> Generator:
+    _cont = count
     while True:
         link = 'https://riders.uber.com/trips?offset={}&fromTime&toTime'
-        _temp = link.format(cont)
+        _temp = link.format(_cont)
         yield _temp
-        cont += 10
+        _cont += count
 
 
 class AbrirLogin(Element):
@@ -56,15 +63,14 @@ class FazerLogin(Element):
         sleep(1)
         self.find_element(self.btn_face).click()
 
-    def logar(self, usuario, senha):
+    def logar(self, usuario: str, senha: str):
         self.login_rede_social(usuario, senha)
 
 
 class PegarDados(Element):
     cards = (By.XPATH, '//div[2]/div/div[2]/div/div[1]/div/div/div[2]/div')
     plus = (By.TAG_NAME, 'svg')
-    paginate = (
-        By.XPATH, '/html/body/div[1]/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div/div[3]/div[2]')
+    paginate = (By.XPATH, '/html/body/div[1]/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div/div[3]/div[2]')
     divs = (By.CLASS_NAME, 'ag')
     dados = []
     current_url = None
@@ -81,7 +87,7 @@ class PegarDados(Element):
         By.XPATH, '//td/table[4]/tbody/tr/td/table[3]/tbody/tr/td[1]/table/tbody/tr/td/table[2]/tbody/tr/td')
     alt_pagamento_class = (By.CLASS_NAME, "ccNumbers")
     erro_recibo = (By.XPATH, "//div[2]/div/div/div/div/div[1]/div[3]")
-    gerador_url = gerar_link()
+    gerador_url = gerar_link(10)
 
     def get_cards(self):
         tentativa = 0
@@ -99,7 +105,7 @@ class PegarDados(Element):
                     raise TypeError
                 pass
 
-    def _open_card(self, card):
+    def _open_card(self, card: WebElement):
         tentativa = 0
         espera = 0
         if card.get_attribute('data-trip-expanded') == 'false':
@@ -164,16 +170,13 @@ class PegarDados(Element):
         raise TypeError()
 
     def _recibo(self):
-        for i in range(5):
+        for i in range(7):
             print(i)
             msg_erro = "Estamos gerando o recibo da viagem. Tente de novo mais tarde."
             try:
                 if self.find_element(self.erro_recibo, time=1).text.strip() == msg_erro:
                     raise ValueError()
-            except (ElementClickInterceptedException,
-                    NoSuchElementException,
-                    StaleElementReferenceException,
-                    TimeoutException):
+            except selenium_exception:
                 pass
             try:
                 recibo = self.find_element(self.recibo, time=1)
@@ -181,17 +184,11 @@ class PegarDados(Element):
                     recibo.click()
                     try:
                         return self._change_frame()
-                    except (ElementClickInterceptedException,
-                            NoSuchElementException,
-                            StaleElementReferenceException,
-                            TimeoutException):
+                    except selenium_exception:
                         pass
                 else:
                     raise ValueError()
-            except (ElementClickInterceptedException,
-                    NoSuchElementException,
-                    StaleElementReferenceException,
-                    TimeoutException):
+            except selenium_exception:
                 pass
         raise ValueError()
 
@@ -230,3 +227,18 @@ class PegarDados(Element):
                 pagamento = self.limpar_pagamento(pagamento)
                 dado.pagamento = pagamento
         return self.dados
+
+
+class InfoPage(Element):
+    paginate = (By.XPATH, '/html/body/div[1]/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div/div[3]/div[2]')
+
+    def num_page(self):
+        num_pagina = 0
+        for page in gerar_link(100):
+            print(page)
+            self.driver.get(page)
+            try:
+                self.find_element(self.paginate, time=5)
+                num_pagina += 100
+            except selenium_exception:
+                return num_pagina
